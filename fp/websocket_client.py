@@ -3,6 +3,7 @@ import websockets
 import requests
 import json
 import time
+import ssl
 
 import logging
 
@@ -32,7 +33,23 @@ class PSWebsocketClient:
         self.username = username
         self.password = password
         self.address = address
-        self.websocket = await websockets.connect(self.address)
+
+        # Create SSL context to handle certificate verification
+        ssl_context = ssl.create_default_context()
+
+        # Try to use certifi for proper CA certificates, fallback to less strict verification
+        try:
+            import certifi
+            ssl_context = ssl.create_default_context(cafile=certifi.where())
+            logger.debug("Using certifi CA certificates")
+        except ImportError:
+            logger.warning("certifi not available, using default SSL context")
+            # For development/testing, allow connection even with cert issues
+            # In production, you should install certifi: pip install certifi
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
+        self.websocket = await websockets.connect(self.address, ssl=ssl_context)
         self.login_uri = "https://play.pokemonshowdown.com/api/login"
         return self
 

@@ -80,6 +80,8 @@ class _FoulPlayConfig:
     room_name: str
     log_level: str
     log_to_file: bool
+    collect_training_data: bool
+    training_data_path: str
     stdout_log_handler: logging.StreamHandler
     file_log_handler: Optional[CustomRotatingFileHandler]
 
@@ -151,6 +153,16 @@ class _FoulPlayConfig:
             action="store_true",
             help="When enabled, DEBUG logs will be written to a file in the logs/ directory",
         )
+        parser.add_argument(
+            "--collect-training-data",
+            action="store_true",
+            help="When enabled, collect training data from MCTS for weight learning",
+        )
+        parser.add_argument(
+            "--training-data-path",
+            default="data/training_data.jsonl",
+            help="Path to save training data (JSONL format)",
+        )
 
         args = parser.parse_args()
         self.websocket_uri = args.websocket_uri
@@ -169,6 +181,8 @@ class _FoulPlayConfig:
         self.room_name = args.room_name
         self.log_level = args.log_level
         self.log_to_file = args.log_to_file
+        self.collect_training_data = args.collect_training_data
+        self.training_data_path = args.training_data_path
 
         self.validate_config()
 

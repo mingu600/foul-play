@@ -147,6 +147,7 @@ async def start_battle_common(
         )
 
     battle = Battle(battle_tag)
+    battle.battle_id = battle_tag  # Use battle_tag as unique identifier for training data
     battle.opponent.account_name = opponent_name
     battle.pokemon_format = pokemon_battle_type
     battle.generation = pokemon_battle_type[:4]
@@ -334,7 +335,7 @@ async def pokemon_battle(ps_websocket_client, pokemon_battle_type, team_dict):
             ):
                 await ps_websocket_client.save_replay(battle.battle_tag)
             await ps_websocket_client.leave_battle(battle.battle_tag)
-            return winner
+            return winner, battle.battle_id
         else:
             action_required = await async_update_battle(battle, msg)
             if action_required and not battle.wait:

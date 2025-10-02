@@ -3,12 +3,15 @@ import json
 import logging
 import traceback
 from copy import deepcopy
+from pathlib import Path
 
 from config import FoulPlayConfig, init_logging, BotModes
 
 from teams import load_team
 from fp.run_battle import pokemon_battle
 from fp.websocket_client import PSWebsocketClient
+from fp.search.training_logger import TrainingDataLogger
+from fp.search.main import set_training_logger
 
 from data import all_move_json
 from data import pokedex
@@ -59,6 +62,17 @@ async def run_foul_play():
     if FoulPlayConfig.avatar is not None:
         await ps_websocket_client.avatar(FoulPlayConfig.avatar)
 
+    # Initialize training data collection if enabled
+    training_logger = None
+    if FoulPlayConfig.collect_training_data:
+        training_logger = TrainingDataLogger(
+            FoulPlayConfig.training_data_path, enabled=True
+        )
+        set_training_logger(training_logger)
+        logger.info(f"Training data collection enabled: {FoulPlayConfig.training_data_path}")
+    else:
+        set_training_logger(None)
+
     battles_run = 0
     wins = 0
     losses = 0
@@ -85,9 +99,15 @@ async def run_foul_play():
         else:
             raise ValueError("Invalid Bot Mode: {}".format(FoulPlayConfig.bot_mode))
 
-        winner = await pokemon_battle(
+        winner, battle_id = await pokemon_battle(
             ps_websocket_client, FoulPlayConfig.pokemon_format, team_dict
         )
+
+        # Log training data outcome
+        if training_logger is not None:
+            outcome = 1.0 if winner == FoulPlayConfig.username else -1.0
+            training_logger.log_game_end(battle_id, outcome)
+
         if winner == FoulPlayConfig.username:
             wins += 1
             logger.info("Won with team: {}".format(team_file_name))
@@ -101,6 +121,11 @@ async def run_foul_play():
         battles_run += 1
         if battles_run >= FoulPlayConfig.run_count:
             break
+
+    # Close training logger
+    if training_logger is not None:
+        training_logger.close()
+
     await ps_websocket_client.close()
 
 

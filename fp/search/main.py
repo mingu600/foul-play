@@ -15,6 +15,15 @@ from fp.search.poke_engine_helpers import battle_to_poke_engine_state
 
 logger = logging.getLogger(__name__)
 
+# Global training data logger (set to None to disable logging)
+_training_logger = None
+
+
+def set_training_logger(training_logger):
+    """Set the global training data logger."""
+    global _training_logger
+    _training_logger = training_logger
+
 
 def select_move_from_mcts_results(mcts_results: list[(MctsResult, float, int)]) -> str:
     final_policy = {}
@@ -142,4 +151,18 @@ def find_best_move(battle: Battle) -> str:
     mcts_results = [(fut.result(), chance, index) for (fut, chance, index) in futures]
     choice = select_move_from_mcts_results(mcts_results)
     logger.info("Choice: {}".format(choice))
+
+    # Log training data if logger is enabled
+    # Log each determinization separately as a training point
+    if _training_logger is not None:
+        for mcts_result, sample_chance, index in mcts_results:
+            # Get the determinized battle state for this index
+            determinized_battle = battles[index][0]
+            _training_logger.log_turn_determinization(
+                determinized_battle,
+                mcts_result,
+                sample_chance,
+                index
+            )
+
     return choice
